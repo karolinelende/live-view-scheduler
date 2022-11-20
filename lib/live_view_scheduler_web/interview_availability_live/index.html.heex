@@ -1,0 +1,7 @@
+<h1> Interview Availability Form </h1>
+<h2> <%= @interview_stage.name %> </h2>
+<%= if @edit_mode do %>
+<FormComponents.edit_availability />
+<% else %>
+<FormComponents.show_availability />
+<% end %>
