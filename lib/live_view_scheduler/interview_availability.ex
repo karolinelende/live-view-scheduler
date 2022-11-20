@@ -2,6 +2,7 @@ defmodule LiveViewScheduler.InterviewAvailability do
   use Ecto.Schema
   import Ecto.Changeset
   alias LiveViewScheduler.InterviewStage
+  alias Timex
 
   schema "interview_availability" do
     field :start_datetime, :utc_datetime_usec
