@@ -3,5 +3,5 @@
 <%= if @edit_mode do %>
 <FormComponents.edit_availability />
 <% else %>
-<FormComponents.show_availability />
+<FormComponents.show_availability selected_week_beginning={@selected_week_beginning} />
 <% end %>
