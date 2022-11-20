@@ -54,4 +54,23 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
       changeset: changeset
     )
   end
+
+  defp find_availability_for_week(start_of_week, availability) do
+    Enum.map(0..6, &Date.add(start_of_week, &1))
+    |> Enum.map(&{&1, availability |> filter_for_date(&1)})
+  end
+
+  defp filter_for_date(availability, date) do
+    availability
+    |> Enum.filter(fn
+      %{date: ^date} ->
+        true
+
+      %{start_datetime: nil} ->
+        false
+
+      %{start_datetime: start_datetime} ->
+        DateTime.to_date(start_datetime) == date
+    end)
+  end
 end

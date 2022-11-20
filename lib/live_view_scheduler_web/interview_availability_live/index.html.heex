@@ -5,5 +5,11 @@
 <% else %>
   <FormComponents.show_availability
     selected_week_beginning={@selected_week_beginning}
+        availability_for_week={
+      find_availability_for_week(
+        @selected_week_beginning,
+        @interview_stage.interview_availabilities
+      )
+    }
   />
 <% end %>
