@@ -13,4 +13,12 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
 
     {:ok, socket}
   end
+
+  def handle_event("toggle-edit-mode", _, socket) do
+    socket =
+      socket
+      |> assign(edit_mode: !socket.assigns.edit_mode)
+
+    {:noreply, socket}
+  end
 end
