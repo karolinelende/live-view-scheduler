@@ -1,7 +1,8 @@
 defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
   use Phoenix.LiveView
+  alias Ecto.Changeset
   alias LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents
-  alias LiveViewScheduler.InterviewStages
+  alias LiveViewScheduler.{InterviewStage, InterviewStages}
 
   def mount(%{"interview_stage_id" => interview_stage_id}, _session, socket) do
     selected_week_beginning = Timex.beginning_of_week(Date.utc_today())
@@ -12,11 +13,14 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
         selected_week_beginning
       )
 
+    changeset = InterviewStage.availability_changeset(interview_stage, %{}) |> dbg()
+
     socket =
       socket
       |> assign(interview_stage: interview_stage)
       |> assign(edit_mode: false)
       |> assign(selected_week_beginning: selected_week_beginning)
+      |> assign(changeset: changeset)
 
     {:ok, socket}
   end
@@ -41,6 +45,55 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
       |> assign(interview_stage: interview_stage)
 
     {:noreply, socket}
+  end
+
+  def handle_event(
+        "new-slot",
+        %{"selected-day" => selected_day},
+        %{
+          assigns: %{
+            interview_stage: interview_stage,
+            changeset: changeset
+          }
+        } = socket
+      ) do
+    date = Date.from_iso8601!(selected_day)
+
+    existing_availability =
+      Changeset.get_change(
+        changeset,
+        :interview_availabilities,
+        Changeset.get_field(changeset, :interview_availabilities)
+      )
+
+    new_availability =
+      Ecto.build_assoc(interview_stage, :interview_availabilities, %{
+        temp_id: :crypto.strong_rand_bytes(5) |> Base.url_encode64() |> binary_part(0, 5),
+        date: date,
+        start_datetime: nil,
+        end_datetime: nil
+      })
+
+    changeset =
+      Changeset.put_assoc(
+        changeset,
+        :interview_availabilities,
+        existing_availability ++ [new_availability]
+      )
+
+    {:noreply, assign(socket, changeset: changeset)}
+  end
+
+  def handle_event("change-time", %{"interview_stage" => interview_stage}, socket) do
+    changeset =
+      InterviewStage.availability_changeset(socket.assigns.interview_stage, interview_stage)
+
+    {:noreply, assign(socket, changeset: changeset)}
+  end
+
+  def handle_event("save", _, socket) do
+    # TODO add
+    {:noreply, assign(socket, edit_mode: !socket.assigns.edit_mode)}
   end
 
   defp find_availability_for_week(start_of_week, availability) do

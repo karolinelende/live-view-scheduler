@@ -9,6 +9,10 @@
   margin: 8px;
 }
 
+.bg-gray {
+  background-color: gray;
+}
+
 /* Alerts and form errors used by phx.new */
 .alert {
   padding: 15px;

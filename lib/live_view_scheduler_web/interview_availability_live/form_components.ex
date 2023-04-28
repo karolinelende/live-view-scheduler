@@ -49,15 +49,95 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
     """
   end
 
-  def edit_availability(assigns) do
-    ~H"""
-    <div>Edit mode</div>
-    <button phx-click="toggle-edit-mode">Cancel</button>
-    """
-  end
-
   def format_time_window(start_time, end_time),
     do: "#{format_time_12h(start_time)} – #{format_time_12h(end_time)}"
 
   def format_time_12h(datetime), do: Timex.format!(datetime, "{h12}:{m}{am}")
+
+  def edit_availability(assigns) do
+    ~H"""
+    <div>Edit mode</div>
+    <.form let={f} for={@changeset} id="availability-form" phx-change="change-time" phx-submit="save">
+      <%= for {date, slot_forms} <- group_availability(f, @selected_week_beginning) do %>
+        <.edit_day_availability {assigns_to_attributes(assigns)} date={date} slot_forms={slot_forms} />
+      <% end %>
+      <button type="button" class="bg-gray" phx-click="toggle-edit-mode">Cancel</button>
+      <button type="submit">Save</button>
+    </.form>
+    """
+  end
+
+  defp group_availability(form, start_of_week) do
+    week_availabilities = inputs_for(form, :interview_availabilities)
+
+    Enum.map(0..6, &Date.add(start_of_week, &1))
+    |> Enum.map(&{&1, Enum.filter(week_availabilities, fn f -> input_value(f, :date) == &1 end)})
+  end
+
+  defp edit_day_availability(assigns) do
+    ~H"""
+    <div class="flex">
+      <div class="m-8">
+        <span><%= @date %></span>
+      </div>
+      <div class="flex">
+        <%= if @slot_forms == [] do %>
+          <span class="m-8">No availability added</span>
+        <% else %>
+          <div>
+            <%= for slot_form <- @slot_forms do %>
+              <fieldset>
+                <%= hidden_inputs_for(slot_form) %>
+                <%= hidden_input(slot_form, :temp_id) %>
+                <%= hidden_input(slot_form, :date) %>
+                <%= hidden_input(slot_form, :interview_stage_id) %>
+                <div>
+                  <.future_slot slot_form={slot_form} date={@date} />
+                </div>
+              </fieldset>
+            <% end %>
+          </div>
+        <% end %>
+        <button type="button" phx-value-selected-day={@date} phx-click="new-slot" class="m-8">
+          +
+        </button>
+      </div>
+    </div>
+    """
+  end
+
+  defp future_slot(assigns) do
+    # TODO fix
+    assigns =
+      assign(assigns,
+        id: input_value(assigns.slot_form, :id) || input_value(assigns.slot_form, :temp_id)
+      )
+      |> assign(
+        :selected,
+        case input_value(assigns.slot_form, :start_datetime) do
+          %DateTime{} = d -> d |> to_string
+          d when is_binary(d) -> d
+          _ -> nil
+        end
+      )
+
+    ~H"""
+    <div class="flex">
+      <select id={"slot-#{@id}-start_datetime"} name={input_name(@slot_form, :start_datetime)}>
+        <%= options_for_select(generate_time_options(@date), @selected) %>
+      </select>
+      <span class="m-8">-</span>
+      <select id={"slot-#{@id}-end_datetime"} name={input_name(@slot_form, :end_datetime)}>
+        <%= options_for_select(generate_time_options(@date), @selected) %>
+      </select>
+    </div>
+    """
+  end
+
+  defp generate_time_options(date) do
+    DateTime.new!(date, ~T[07:00:00.000000])
+    |> Stream.iterate(&Timex.shift(&1, minutes: 15))
+    |> Enum.take_while(&(DateTime.compare(&1, DateTime.new!(date, ~T[20:00:00.000000])) != :gt))
+    |> Enum.map(&{"#{format_time_12h(&1)}", DateTime.to_string(&1)})
+  end
 end
