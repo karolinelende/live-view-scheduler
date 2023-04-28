@@ -56,12 +56,8 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
     """
   end
 
-  def format_time_window(start_time, end_time) do
-    "#{format_time_12h(start_time)} – #{format_time_12h(end_time)}"
-  end
+  def format_time_window(start_time, end_time),
+    do: "#{format_time_12h(start_time)} – #{format_time_12h(end_time)}"
 
-  def format_time_12h(datetime) do
-    datetime
-    |> Timex.format!("{h12}:{m}{am}")
-  end
+  def format_time_12h(datetime), do: Timex.format!(datetime, "{h12}:{m}{am}")
 end

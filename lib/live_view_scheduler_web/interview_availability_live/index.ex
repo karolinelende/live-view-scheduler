@@ -4,17 +4,19 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
   alias LiveViewScheduler.InterviewStages
 
   def mount(%{"interview_stage_id" => interview_stage_id}, _session, socket) do
+    selected_week_beginning = Timex.beginning_of_week(Date.utc_today())
+
     interview_stage =
       InterviewStages.get_weeks_availability_for_stage(
         interview_stage_id,
-        Timex.beginning_of_week(Date.utc_today())
+        selected_week_beginning
       )
 
     socket =
       socket
       |> assign(interview_stage: interview_stage)
       |> assign(edit_mode: false)
-      |> assign(selected_week_beginning: Timex.beginning_of_week(Date.utc_today()))
+      |> assign(selected_week_beginning: selected_week_beginning)
 
     {:ok, socket}
   end
@@ -52,11 +54,8 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
       %{date: ^date} ->
         true
 
-      %{start_datetime: nil} ->
+      _ ->
         false
-
-      %{start_datetime: start_datetime} ->
-        DateTime.to_date(start_datetime) == date
     end)
   end
 end
