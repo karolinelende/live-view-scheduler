@@ -16,11 +16,7 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
   end
 
   def handle_event("toggle-edit-mode", _, socket) do
-    socket =
-      socket
-      |> assign(edit_mode: !socket.assigns.edit_mode)
-
-    {:noreply, socket}
+    {:noreply, assign(socket, edit_mode: !socket.assigns.edit_mode)}
   end
 
   def handle_event("change_week", %{"value" => value}, socket) do

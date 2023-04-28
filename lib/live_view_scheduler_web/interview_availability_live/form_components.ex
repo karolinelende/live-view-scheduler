@@ -52,6 +52,7 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
   def edit_availability(assigns) do
     ~H"""
     <div>Edit mode</div>
+    <button phx-click="toggle-edit-mode">Cancel</button>
     """
   end
 
