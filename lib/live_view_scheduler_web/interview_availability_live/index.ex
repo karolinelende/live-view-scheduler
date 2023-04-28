@@ -1,16 +1,20 @@
 defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
   use Phoenix.LiveView
   alias LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents
-  alias LiveViewScheduler.{InterviewStage, InterviewStages}
+  alias LiveViewScheduler.InterviewStages
 
   def mount(%{"interview_stage_id" => interview_stage_id}, _session, socket) do
-    socket =
-      load_then_assign_interview_stage_and_changeset(
-        socket,
+    interview_stage =
+      InterviewStages.get_weeks_availability_for_stage(
         interview_stage_id,
         Timex.beginning_of_week(Date.utc_today())
       )
+
+    socket =
+      socket
+      |> assign(interview_stage: interview_stage)
       |> assign(edit_mode: false)
+      |> assign(selected_week_beginning: Timex.beginning_of_week(Date.utc_today()))
 
     {:ok, socket}
   end
@@ -23,32 +27,18 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
     selected_week_beginning =
       Timex.shift(socket.assigns.selected_week_beginning, weeks: String.to_integer(value))
 
-    {:noreply,
-     load_then_assign_interview_stage_and_changeset(
-       socket,
-       socket.assigns.interview_stage.id,
-       selected_week_beginning
-     )}
-  end
-
-  defp load_then_assign_interview_stage_and_changeset(
-         socket,
-         interview_stage_id,
-         selected_week_beginning
-       ) do
     interview_stage =
       InterviewStages.get_weeks_availability_for_stage(
-        interview_stage_id,
+        socket.assigns.interview_stage.id,
         selected_week_beginning
       )
 
-    changeset = InterviewStage.availability_changeset(interview_stage, %{})
+    socket =
+      socket
+      |> assign(selected_week_beginning: selected_week_beginning)
+      |> assign(interview_stage: interview_stage)
 
-    assign(socket,
-      selected_week_beginning: selected_week_beginning,
-      interview_stage: interview_stage,
-      changeset: changeset
-    )
+    {:noreply, socket}
   end
 
   defp find_availability_for_week(start_of_week, availability) do
