@@ -1,8 +1,9 @@
 defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
-  use Phoenix.LiveView
+  use Phoenix.LiveView, layout: {LiveViewSchedulerWeb.LayoutView, "live.html"}
   alias Ecto.Changeset
   alias LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents
   alias LiveViewScheduler.{InterviewStage, InterviewStages}
+  alias LiveViewScheduler.Repo
 
   def mount(%{"interview_stage_id" => interview_stage_id}, _session, socket) do
     selected_week_beginning = Timex.beginning_of_week(Date.utc_today())
@@ -13,7 +14,7 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
         selected_week_beginning
       )
 
-    changeset = InterviewStage.availability_changeset(interview_stage, %{}) |> dbg()
+    changeset = InterviewStage.availability_changeset(interview_stage, %{})
 
     socket =
       socket
@@ -39,10 +40,13 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
         selected_week_beginning
       )
 
+    changeset = InterviewStage.availability_changeset(interview_stage, %{})
+
     socket =
       socket
       |> assign(selected_week_beginning: selected_week_beginning)
       |> assign(interview_stage: interview_stage)
+      |> assign(changeset: changeset)
 
     {:noreply, socket}
   end
@@ -91,9 +95,29 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
     {:noreply, assign(socket, changeset: changeset)}
   end
 
-  def handle_event("save", _, socket) do
-    # TODO add
-    {:noreply, assign(socket, edit_mode: !socket.assigns.edit_mode)}
+  def handle_event("save", %{"interview_stage" => interview_stage}, socket) do
+    socket =
+      InterviewStage.availability_changeset(socket.assigns.interview_stage, interview_stage)
+      |> Repo.update()
+      |> case do
+        {:ok, %InterviewStage{} = updated_interview_stage} ->
+          socket
+          |> assign(edit_mode: false)
+          |> assign(:interview_stage, updated_interview_stage)
+          |> assign(
+            :changeset,
+            InterviewStage.availability_changeset(updated_interview_stage, %{})
+          )
+          |> clear_flash(:error)
+          |> put_flash(:info, "Availability saved")
+
+        {:error, changeset} ->
+          socket
+          |> put_flash(:error, "Error saving availability")
+          |> assign(changeset: changeset)
+      end
+
+    {:noreply, socket}
   end
 
   defp find_availability_for_week(start_of_week, availability) do

@@ -12,7 +12,7 @@ defmodule LiveViewScheduler.Repo.Migrations.CreateInterviewTables do
       add :interview_stage_id, references("interview_stages")
       add :start_datetime, :timestamptz
       add :end_datetime, :timestamptz
-      add :deleted, :boolean
+      add :deleted, :boolean, default: false
       timestamps(type: :timestamptz)
     end
   end

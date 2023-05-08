@@ -57,6 +57,7 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
   def edit_availability(assigns) do
     ~H"""
     <div>Edit mode</div>
+    <h3>Week beginning: <%= @selected_week_beginning %></h3>
     <.form let={f} for={@changeset} id="availability-form" phx-change="change-time" phx-submit="save">
       <%= for {date, slot_forms} <- group_availability(f, @selected_week_beginning) do %>
         <.edit_day_availability {assigns_to_attributes(assigns)} date={date} slot_forms={slot_forms} />
@@ -71,7 +72,29 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
     week_availabilities = inputs_for(form, :interview_availabilities)
 
     Enum.map(0..6, &Date.add(start_of_week, &1))
-    |> Enum.map(&{&1, Enum.filter(week_availabilities, fn f -> input_value(f, :date) == &1 end)})
+    |> Enum.map(&{&1, filter_for_date(&1, week_availabilities)})
+  end
+
+  defp filter_for_date(date, week_availabilities) do
+    week_availabilities
+    |> Enum.filter(fn availability_form ->
+      availability_date =
+        case input_value(availability_form, :date) do
+          %Date{} = x ->
+            x
+
+          x when is_binary(x) ->
+            case Date.from_iso8601(x) do
+              {:ok, d} -> d
+              {:error, _} -> nil
+            end
+
+          nil ->
+            input_value(availability_form, :start_datetime) |> DateTime.to_date()
+        end
+
+      availability_date == date
+    end)
   end
 
   defp edit_day_availability(assigns) do
@@ -107,14 +130,28 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
   end
 
   defp future_slot(assigns) do
-    # TODO fix
     assigns =
       assign(assigns,
         id: input_value(assigns.slot_form, :id) || input_value(assigns.slot_form, :temp_id)
       )
-      |> assign(
+
+    ~H"""
+    <div class="flex">
+      <.time_select id={@id} slot_form={@slot_form} field={:start_datetime} date={@date} />
+      <span class="m-8">-</span>
+      <.time_select id={@id} slot_form={@slot_form} field={:end_datetime} date={@date} />
+    </div>
+    """
+  end
+
+  defp time_select(assigns) do
+    input_value(assigns.slot_form, assigns.field)
+
+    assigns =
+      assign(
+        assigns,
         :selected,
-        case input_value(assigns.slot_form, :start_datetime) do
+        case input_value(assigns.slot_form, assigns.field) do
           %DateTime{} = d -> d |> to_string
           d when is_binary(d) -> d
           _ -> nil
@@ -122,14 +159,14 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
       )
 
     ~H"""
-    <div class="flex">
-      <select id={"slot-#{@id}-start_datetime"} name={input_name(@slot_form, :start_datetime)}>
-        <%= options_for_select(generate_time_options(@date), @selected) %>
+    <div>
+      <select id={"slot-#{@id}-#{@field}"} name={input_name(@slot_form, @field)}>
+        <%= options_for_select(
+          [{"#{humanize(@field)}", nil} | generate_time_options(@date)],
+          @selected
+        ) %>
       </select>
-      <span class="m-8">-</span>
-      <select id={"slot-#{@id}-end_datetime"} name={input_name(@slot_form, :end_datetime)}>
-        <%= options_for_select(generate_time_options(@date), @selected) %>
-      </select>
+      <%= error_tag(@slot_form, @field) %>
     </div>
     """
   end
