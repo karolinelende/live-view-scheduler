@@ -27,7 +27,7 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
   end
 
   def handle_event("toggle-edit-mode", _, socket) do
-    {:noreply, assign(socket, edit_mode: !socket.assigns.edit_mode)}
+    {:noreply, assign(socket, edit_mode: !socket.assigns.edit_mode) |> clear_flash(:info)}
   end
 
   def handle_event("change_week", %{"value" => value}, socket) do
@@ -95,12 +95,47 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
     {:noreply, assign(socket, changeset: changeset)}
   end
 
+  def handle_event(
+        "delete-slot",
+        %{"index" => index},
+        %{assigns: %{changeset: changeset}} = socket
+      ) do
+    index = String.to_integer(index)
+
+    existing_availability =
+      Changeset.get_change(
+        changeset,
+        :interview_availabilities,
+        Changeset.get_field(changeset, :interview_availabilities)
+      )
+
+    slot_to_delete = Enum.at(existing_availability, index)
+
+    updated_availability =
+      if availability_is_already_persisted?(slot_to_delete) do
+        existing_availability
+        |> List.update_at(index, &Changeset.change(&1, %{deleted: true}))
+      else
+        List.delete_at(existing_availability, index)
+      end
+
+    changeset = Changeset.put_assoc(changeset, :interview_availabilities, updated_availability)
+
+    {:noreply, assign(socket, changeset: changeset)}
+  end
+
   def handle_event("save", %{"interview_stage" => interview_stage}, socket) do
     socket =
       InterviewStage.availability_changeset(socket.assigns.interview_stage, interview_stage)
       |> Repo.update()
       |> case do
-        {:ok, %InterviewStage{} = updated_interview_stage} ->
+        {:ok, %InterviewStage{}} ->
+          updated_interview_stage =
+            InterviewStages.get_weeks_availability_for_stage(
+              socket.assigns.interview_stage.id,
+              socket.assigns.selected_week_beginning
+            )
+
           socket
           |> assign(edit_mode: false)
           |> assign(:interview_stage, updated_interview_stage)
@@ -135,4 +170,13 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
         false
     end)
   end
+
+  defp availability_is_already_persisted?(%Changeset{} = changeset) do
+    changeset
+    |> Changeset.apply_changes()
+    |> availability_is_already_persisted?()
+  end
+
+  defp availability_is_already_persisted?(%{temp_id: nil}), do: true
+  defp availability_is_already_persisted?(_), do: false
 end

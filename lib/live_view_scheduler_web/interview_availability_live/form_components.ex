@@ -89,29 +89,41 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
   end
 
   defp edit_day_availability(assigns) do
+    all_deleted = Enum.all?(assigns.slot_forms, &(input_value(&1, :deleted) == true))
+    assigns = assign(assigns, :all_deleted, all_deleted)
+
     ~H"""
     <div class="flex">
       <div class="m-8">
         <span><%= @date %></span>
       </div>
       <div class="flex">
-        <%= if @slot_forms == [] do %>
-          <span class="m-8">No availability added</span>
-        <% else %>
-          <div>
-            <%= for slot_form <- @slot_forms do %>
-              <fieldset>
-                <%= hidden_inputs_for(slot_form) %>
-                <%= hidden_input(slot_form, :temp_id) %>
-                <%= hidden_input(slot_form, :date) %>
-                <%= hidden_input(slot_form, :interview_stage_id) %>
-                <div>
-                  <.future_slot slot_form={slot_form} date={@date} />
-                </div>
-              </fieldset>
-            <% end %>
-          </div>
-        <% end %>
+        <div>
+          <%= case @slot_forms do %>
+            <% [] -> %>
+              <span class="m-8">No availability added</span>
+            <% slot_forms -> %>
+              <%= if @all_deleted do %>
+                <span class="m-8">No availability added</span>
+              <% end %>
+              <%= Enum.sort_by(slot_forms, &(input_value(&1, :deleted) != true)) |> Enum.map(fn slot_form -> %>
+                <%= if input_value(slot_form, :deleted) == true do %>
+                  <%= hidden_inputs_for(slot_form) %>
+                  <%= hidden_input(slot_form, :deleted) %>
+                <% else %>
+                  <fieldset>
+                    <%= hidden_inputs_for(slot_form) %>
+                    <%= hidden_input(slot_form, :temp_id) %>
+                    <%= hidden_input(slot_form, :date) %>
+                    <%= hidden_input(slot_form, :interview_stage_id) %>
+                    <div>
+                      <.future_slot slot_form={slot_form} date={@date} />
+                    </div>
+                  </fieldset>
+                <% end %>
+              <% end) %>
+          <% end %>
+        </div>
         <button type="button" phx-value-selected-day={@date} phx-click="new-slot" class="m-8">
           +
         </button>
@@ -131,6 +143,9 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
       <.time_select id={@id} slot_form={@slot_form} field={:start_datetime} date={@date} />
       <span class="m-8">-</span>
       <.time_select id={@id} slot_form={@slot_form} field={:end_datetime} date={@date} />
+      <button type="button" phx-value-index={@slot_form.index} phx-click="delete-slot" class="m-8">
+        🗑
+      </button>
     </div>
     """
   end
