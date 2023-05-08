@@ -80,17 +80,8 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
     |> Enum.filter(fn availability_form ->
       availability_date =
         case input_value(availability_form, :date) do
-          %Date{} = x ->
-            x
-
-          x when is_binary(x) ->
-            case Date.from_iso8601(x) do
-              {:ok, d} -> d
-              {:error, _} -> nil
-            end
-
-          nil ->
-            input_value(availability_form, :start_datetime) |> DateTime.to_date()
+          %Date{} = x -> x
+          x when is_binary(x) -> Date.from_iso8601!(x)
         end
 
       availability_date == date
