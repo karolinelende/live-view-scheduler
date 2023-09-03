@@ -14,6 +14,12 @@ defmodule LiveViewScheduler.InterviewStage do
     timestamps(type: :utc_datetime_usec)
   end
 
+  def create_changeset(%__MODULE__{} = interview_stage, attrs) do
+    interview_stage
+    |> cast(attrs, [:name, :duration])
+    |> validate_required([:name, :duration])
+  end
+
   def availability_changeset(
         %__MODULE__{interview_availabilities: interview_availabilities} = interview_stage,
         attrs
