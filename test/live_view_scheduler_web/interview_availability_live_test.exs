@@ -37,31 +37,53 @@ defmodule InterviewAvailabilityLiveTest do
     [socket: socket]
   end
 
-  defp extract_new_availability(socket) do
-    socket.assigns.changeset.changes.interview_availabilities
-    |> Enum.at(0)
-    |> Map.get(:data)
+  def assert_all(list, accessor_fn, predicate_fn) do
+    list
+    |> Enum.map(&accessor_fn.(&1))
+    |> Enum.map(&predicate_fn.(&1))
+    |> Enum.all?()
   end
 
   describe "unit tests with emulated Socket" do
     setup [:create_socket, :create_interview_stage, :mount_socket]
 
-    test "adds a new empty slot", %{socket: socket} do
-      date = Timex.today()
-
+    test "creates correct socket", %{socket: socket} do
       assert socket.assigns.interview_stage.__meta__.state == :loaded
       assert socket.assigns.interview_stage.interview_availabilities == []
       assert socket.assigns.changeset.changes == %{}
+    end
 
+    test "adds a new empty slot", %{socket: socket} do
+      date = Timex.today()
       socket = IA.assign_new_slot_to_changeset(socket, Date.to_iso8601(date))
 
       # changes happened
       refute socket.assigns.changeset.changes == %{}
 
-      # look at new_availability
-      new_availability = extract_new_availability(socket)
+      # new_availability has temp_id
+      assert socket.assigns.changeset.changes.interview_availabilities
+             |> assert_all(fn %{data: data} -> data end, fn data -> is_binary(data.temp_id) end)
 
-      assert is_binary(new_availability.temp_id)
+      # and is ready for insertion
+      assert socket.assigns.changeset.changes.interview_availabilities
+             |> assert_all(fn %{action: action} -> action end, fn action -> action == :insert end)
+    end
+
+    test "adds two new empty slots for different days", %{socket: socket} do
+      date = Timex.today()
+
+      # add two different days
+      socket =
+        socket
+        |> IA.assign_new_slot_to_changeset(Date.to_iso8601(date))
+        |> IA.assign_new_slot_to_changeset(Date.to_iso8601(Timex.shift(date, days: 1)))
+
+      # changes happened
+      refute socket.assigns.changeset.changes == %{}
+
+      # ready for db insertions
+      assert socket.assigns.changeset.changes.interview_availabilities
+             |> assert_all(fn %{action: action} -> action end, fn action -> action == :insert end)
     end
 
     test "saves new interview availability", %{socket: socket} do
@@ -69,7 +91,9 @@ defmodule InterviewAvailabilityLiveTest do
 
       socket = IA.assign_new_slot_to_changeset(socket, Date.to_iso8601(date))
 
-      new_availability = extract_new_availability(socket)
+      new_availability =
+        socket.assigns.changeset.changes.interview_availabilities
+        |> get_in([Access.at(0), Access.key!(:data)])
 
       # emulate adding times to new slot
       interview_availabilities = %{
@@ -89,6 +113,54 @@ defmodule InterviewAvailabilityLiveTest do
 
       # new interview availability has been persisted
       refute socket.assigns.interview_stage.interview_availabilities == []
+
+      assert socket.assigns.interview_stage.interview_availabilities
+             |> assert_all(fn %{__meta__: meta} -> meta end, fn meta -> meta.state == :loaded end)
+    end
+
+    def add_times_to_slots(
+          availabilities,
+          start_datetime \\ ~T[07:00:00.000000],
+          end_datetime \\ ~T[07:30:00.000000]
+        ) do
+      interview_availabilities =
+        for {%{data: data}, i} <- Enum.with_index(availabilities), into: Map.new() do
+          {Integer.to_string(i),
+           %{
+             "date" => data.date,
+             "end_datetime" => DateTime.new!(data.date, ~T[07:30:00.000000]),
+             "interview_stage_id" => Integer.to_string(data.interview_stage_id),
+             "start_datetime" => DateTime.new!(data.date, ~T[07:00:00.000000]),
+             "temp_id" => data.temp_id
+           }}
+        end
+
+      Map.put(%{}, "interview_availabilities", interview_availabilities)
+    end
+
+    test "save several new interview availabilities for different non-past dates", %{
+      socket: socket
+    } do
+      date = Timex.today()
+
+      socket =
+        socket
+        |> IA.assign_new_slot_to_changeset(Date.to_iso8601(date))
+        |> IA.assign_new_slot_to_changeset(Date.to_iso8601(Timex.shift(date, days: 1)))
+
+      # emulate addig times to new slots
+      interview_availabilities =
+        socket.assigns.changeset.changes.interview_availabilities
+        |> add_times_to_slots()
+
+      # emulate submitting the form
+      socket = IA.save_interview_availabilities(socket, interview_availabilities)
+
+      # new interview availability has been persisted
+      refute socket.assigns.interview_stage.interview_availabilities == []
+
+      assert socket.assigns.interview_stage.interview_availabilities
+             |> assert_all(fn %{__meta__: meta} -> meta end, fn meta -> meta.state == :loaded end)
     end
   end
 end
