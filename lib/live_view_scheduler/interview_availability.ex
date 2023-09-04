@@ -10,6 +10,7 @@ defmodule LiveViewScheduler.InterviewAvailability do
     field :deleted, :boolean
     field :temp_id, :string, virtual: true
     field :date, :date, virtual: true
+    field :overlaps, :boolean, virtual: true
 
     belongs_to :interview_stage, InterviewStage
 
@@ -24,7 +25,8 @@ defmodule LiveViewScheduler.InterviewAvailability do
       :interview_stage_id,
       :temp_id,
       :date,
-      :deleted
+      :deleted,
+      :overlaps
     ])
     |> validate_required(:start_datetime, message: "Start time must be selected")
     |> validate_required(:end_datetime, message: "End time must be selected")
@@ -33,6 +35,13 @@ defmodule LiveViewScheduler.InterviewAvailability do
     )
     |> validate_date_times()
     |> validate_cannot_delete_past_availability()
+    |> validate_no_overlap()
+  end
+
+  defp validate_no_overlap(changeset) do
+    if get_field(changeset, :overlaps) == true,
+      do: add_error(changeset, :overlaps, "Cannot overlap with other availabilities"),
+      else: changeset
   end
 
   defp validate_date_times(changeset = %{errors: []}) do

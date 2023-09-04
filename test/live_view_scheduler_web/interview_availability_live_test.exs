@@ -128,9 +128,9 @@ defmodule InterviewAvailabilityLiveTest do
           {Integer.to_string(i),
            %{
              "date" => data.date,
-             "end_datetime" => DateTime.new!(data.date, ~T[07:30:00.000000]),
+             "end_datetime" => DateTime.new!(data.date, end_datetime),
              "interview_stage_id" => Integer.to_string(data.interview_stage_id),
-             "start_datetime" => DateTime.new!(data.date, ~T[07:00:00.000000]),
+             "start_datetime" => DateTime.new!(data.date, start_datetime),
              "temp_id" => data.temp_id
            }}
         end
@@ -148,7 +148,7 @@ defmodule InterviewAvailabilityLiveTest do
         |> IA.assign_new_slot_to_changeset(Date.to_iso8601(date))
         |> IA.assign_new_slot_to_changeset(Date.to_iso8601(Timex.shift(date, days: 1)))
 
-      # emulate addig times to new slots
+      # emulate adding times to new slots
       interview_availabilities =
         socket.assigns.changeset.changes.interview_availabilities
         |> add_times_to_slots()
@@ -161,6 +161,44 @@ defmodule InterviewAvailabilityLiveTest do
 
       assert socket.assigns.interview_stage.interview_availabilities
              |> assert_all(fn %{__meta__: meta} -> meta end, fn meta -> meta.state == :loaded end)
+    end
+
+    test "success: cannot save two overlapping interview availabilities", %{
+      socket: socket
+    } do
+      date = Timex.today()
+
+      # add same date slots
+      socket =
+        socket
+        |> IA.assign_new_slot_to_changeset(Date.to_iso8601(date))
+        |> IA.assign_new_slot_to_changeset(Date.to_iso8601(date))
+
+      # emulate adding times to new slots
+      interview_availabilities =
+        socket.assigns.changeset.changes.interview_availabilities
+        |> add_times_to_slots()
+
+      # emulate submitting the form
+      {:error,
+       %Ecto.Changeset{
+         action: :update,
+         changes: changes,
+         valid?: false
+       }} = IA.save_interview_availabilities(socket, interview_availabilities)
+
+      assert [
+               %Ecto.Changeset{
+                 action: :insert,
+                 errors: [overlaps: {"Cannot overlap with other availabilities", []}],
+                 valid?: false
+               },
+               %Ecto.Changeset{
+                 action: :insert,
+                 errors: [overlaps: {"Cannot overlap with other availabilities", []}],
+                 valid?: false
+               }
+             ] = changes.interview_availabilities
     end
   end
 end
