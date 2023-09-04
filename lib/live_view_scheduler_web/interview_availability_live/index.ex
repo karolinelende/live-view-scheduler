@@ -100,14 +100,18 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.Index do
     # as we won't have the flash functionality in our test socket
     case save_interview_availabilities(socket, interview_stage) do
       {:error, changeset} ->
-        socket
-        |> put_flash(:error, "Error saving availability")
-        |> assign(changeset: changeset)
+        socket =
+          socket
+          |> put_flash(:error, "Error saving availability")
+          |> assign(changeset: changeset)
+
+        {:noreply, socket}
 
       socket ->
-        socket
-        |> clear_flash(:error)
-        |> put_flash(:info, "Availability saved")
+        socket =
+          socket
+          |> clear_flash(:error)
+          |> put_flash(:info, "Availability saved")
 
         {:noreply, socket}
     end
