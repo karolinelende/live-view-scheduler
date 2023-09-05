@@ -139,13 +139,16 @@ defmodule LiveViewSchedulerWeb.InterviewAvailabilityLive.FormComponents do
       )
 
     ~H"""
-    <div class="flex">
-      <.time_select id={@id} slot_form={@slot_form} field={:start_datetime} date={@date} />
-      <span class="m-8">-</span>
-      <.time_select id={@id} slot_form={@slot_form} field={:end_datetime} date={@date} />
-      <button type="button" phx-value-index={@slot_form.index} phx-click="delete-slot" class="m-8">
-        🗑
-      </button>
+    <div>
+      <div class="flex">
+        <.time_select id={@id} slot_form={@slot_form} field={:start_datetime} date={@date} />
+        <span class="m-8">-</span>
+        <.time_select id={@id} slot_form={@slot_form} field={:end_datetime} date={@date} />
+        <button type="button" phx-value-index={@slot_form.index} phx-click="delete-slot" class="m-8">
+          🗑
+        </button>
+      </div>
+        <%= error_tag(@slot_form, :overlaps) %>
     </div>
     """
   end

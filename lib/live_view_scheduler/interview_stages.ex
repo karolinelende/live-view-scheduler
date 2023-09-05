@@ -3,6 +3,12 @@ defmodule LiveViewScheduler.InterviewStages do
   alias LiveViewScheduler.Repo
   alias LiveViewScheduler.InterviewStage
 
+  def create_interview_stage(attrs \\ %{}) do
+    %InterviewStage{}
+    |> InterviewStage.create_changeset(attrs)
+    |> Repo.insert()
+  end
+
   def get_by_id!(id) do
     from(is in InterviewStage, where: is.id == ^id)
     |> Repo.one!()
