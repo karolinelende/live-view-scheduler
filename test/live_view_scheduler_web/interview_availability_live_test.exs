@@ -10,40 +10,6 @@ defmodule InterviewAvailabilityLiveTest do
     duration: 30
   }
 
-  def assert_key(socket, key, value) do
-    assert socket.assigns[key] == value
-    socket
-  end
-
-  def create_interview_stage(_) do
-    {:ok, %InterviewStage{} = interview_stage} =
-      InterviewStages.create_interview_stage(@create_attrs)
-
-    [interview_stage: interview_stage]
-  end
-
-  def mount_socket(%{socket: socket, interview_stage: interview_stage}) do
-    selected_week_beginning = Timex.today()
-
-    interview_stage = IA.get_interview_stage(interview_stage.id, selected_week_beginning)
-
-    socket =
-      socket
-      |> IA.assign_interview_stage(interview_stage)
-      |> IA.assign_edit_mode(true)
-      |> IA.assign_selected_week_beginning(selected_week_beginning)
-      |> IA.assign_changeset()
-
-    [socket: socket]
-  end
-
-  def assert_all(list, accessor_fn, predicate_fn) do
-    list
-    |> Enum.map(&accessor_fn.(&1))
-    |> Enum.map(&predicate_fn.(&1))
-    |> Enum.all?()
-  end
-
   describe "unit tests with emulated Socket" do
     setup [:create_socket, :create_interview_stage, :mount_socket]
 
@@ -118,26 +84,6 @@ defmodule InterviewAvailabilityLiveTest do
              |> assert_all(fn %{__meta__: meta} -> meta end, fn meta -> meta.state == :loaded end)
     end
 
-    def add_times_to_slots(
-          availabilities,
-          start_datetime \\ ~T[07:00:00.000000],
-          end_datetime \\ ~T[07:30:00.000000]
-        ) do
-      interview_availabilities =
-        for {%{data: data}, i} <- Enum.with_index(availabilities), into: Map.new() do
-          {Integer.to_string(i),
-           %{
-             "date" => data.date,
-             "end_datetime" => DateTime.new!(data.date, end_datetime),
-             "interview_stage_id" => Integer.to_string(data.interview_stage_id),
-             "start_datetime" => DateTime.new!(data.date, start_datetime),
-             "temp_id" => data.temp_id
-           }}
-        end
-
-      Map.put(%{}, "interview_availabilities", interview_availabilities)
-    end
-
     test "save several new interview availabilities for different non-past dates", %{
       socket: socket
     } do
@@ -201,4 +147,58 @@ defmodule InterviewAvailabilityLiveTest do
              ] = changes.interview_availabilities
     end
   end
+
+  defp assert_key(socket, key, value) do
+    assert socket.assigns[key] == value
+    socket
+  end
+
+  defp create_interview_stage(_) do
+    {:ok, %InterviewStage{} = interview_stage} =
+      InterviewStages.create_interview_stage(@create_attrs)
+
+    [interview_stage: interview_stage]
+  end
+
+  defp mount_socket(%{socket: socket, interview_stage: interview_stage}) do
+    selected_week_beginning = Timex.today()
+
+    interview_stage = IA.get_interview_stage(interview_stage.id, selected_week_beginning)
+
+    socket =
+      socket
+      |> IA.assign_interview_stage(interview_stage)
+      |> IA.assign_edit_mode(true)
+      |> IA.assign_selected_week_beginning(selected_week_beginning)
+      |> IA.assign_changeset()
+
+    [socket: socket]
+  end
+
+  defp assert_all(list, accessor_fn, predicate_fn) do
+    list
+    |> Enum.map(&accessor_fn.(&1))
+    |> Enum.map(&predicate_fn.(&1))
+    |> Enum.all?()
+  end
+
+  defp add_times_to_slots(
+          availabilities,
+          start_datetime \\ ~T[07:00:00.000000],
+          end_datetime \\ ~T[07:30:00.000000]
+        ) do
+      interview_availabilities =
+        for {%{data: data}, i} <- Enum.with_index(availabilities), into: Map.new() do
+          {Integer.to_string(i),
+           %{
+             "date" => data.date,
+             "end_datetime" => DateTime.new!(data.date, end_datetime),
+             "interview_stage_id" => Integer.to_string(data.interview_stage_id),
+             "start_datetime" => DateTime.new!(data.date, start_datetime),
+             "temp_id" => data.temp_id
+           }}
+        end
+
+      Map.put(%{}, "interview_availabilities", interview_availabilities)
+    end
 end

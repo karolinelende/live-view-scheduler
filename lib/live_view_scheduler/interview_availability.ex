@@ -38,12 +38,6 @@ defmodule LiveViewScheduler.InterviewAvailability do
     |> validate_no_overlap()
   end
 
-  defp validate_no_overlap(changeset) do
-    if get_field(changeset, :overlaps) == true,
-      do: add_error(changeset, :overlaps, "Cannot overlap with other availabilities"),
-      else: changeset
-  end
-
   defp validate_date_times(changeset = %{errors: []}) do
     start_datetime = get_change(changeset, :start_datetime)
     end_datetime = get_change(changeset, :end_datetime)
@@ -114,5 +108,11 @@ defmodule LiveViewScheduler.InterviewAvailability do
     else
       changeset
     end
+  end
+
+  defp validate_no_overlap(changeset) do
+    if get_field(changeset, :overlaps) == true,
+      do: add_error(changeset, :overlaps, "Cannot overlap with other availabilities"),
+      else: changeset
   end
 end
